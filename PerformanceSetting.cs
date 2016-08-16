@@ -44,7 +44,7 @@ namespace K12.Behavior.CSP
             // 加入項目
             for (int i = 0; i < list.Count; i++)
             {
-                DataGridViewRow DGR = dgvResult.Rows[dgvResult.Rows.Add("上移","下移", list[i].Item)];
+                DataGridViewRow DGR = dgvResult.Rows[dgvResult.Rows.Add( list[i].Item,"上移","下移")];
 
                 DGR.Tag = list[i];
                 
@@ -54,8 +54,8 @@ namespace K12.Behavior.CSP
             DataGridViewButtonCell DGVBC1 = new DataGridViewButtonCell();
             DataGridViewButtonCell DGVBC2 = new DataGridViewButtonCell();
 
-            DGVBC1 = (DataGridViewButtonCell)dgvResult.Rows[dgvResult.Rows.Count - 1].Cells[0];
-            DGVBC2 = (DataGridViewButtonCell)dgvResult.Rows[dgvResult.Rows.Count - 1].Cells[1];
+            DGVBC1 = (DataGridViewButtonCell)dgvResult.Rows[dgvResult.Rows.Count - 1].Cells[1];
+            DGVBC2 = (DataGridViewButtonCell)dgvResult.Rows[dgvResult.Rows.Count - 1].Cells[2];
 
             DGVBC1.Value = "上移";
             DGVBC2.Value = "下移";
@@ -129,7 +129,7 @@ namespace K12.Behavior.CSP
         {            
             // 上移
             #region 上移
-            if (e.ColumnIndex == 0)
+            if (e.ColumnIndex == 1)
             {
                 // 取得總行數
                 int totalRows = dgvResult.Rows.Count;
@@ -165,14 +165,14 @@ namespace K12.Behavior.CSP
             #endregion
             // 下移
             #region 下移
-            if (e.ColumnIndex == 1)
+            if (e.ColumnIndex == 2)
             {
                 int totalRows = dgvResult.Rows.Count;
 
                 int rowIndex = e.RowIndex;
 
                 // 項目在最後一項的話不能在往下了
-                if (rowIndex == totalRows - 1)
+                if (rowIndex == totalRows - 2)
                 {
                     return;
                 }
