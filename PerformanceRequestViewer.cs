@@ -18,74 +18,91 @@ namespace K12.Behavior.CSP
     public partial class PerformanceRequestViewer : BaseForm
     {
 
-        AccessHelper accessHelper = new AccessHelper();
+        AccessHelper _AccessHelper = new AccessHelper();
 
-        List<PerformanceData> list = new List<PerformanceData>();
+        //List<PerformanceData> list = new List<PerformanceData>();
 
-        Dictionary<String, String> StudentID_to_StudentName = new Dictionary<string, string>();
+        Dictionary<String, String> _DicStudentName = new Dictionary<string, string>();
 
-        Dictionary<String, String> TeacherID_to_TeacherName = new Dictionary<string, string>();
+        Dictionary<String, String> _DicTeacherName = new Dictionary<string, string>();
 
-        Dictionary<String, String> CourseID_to_CourseName = new Dictionary<string, string>();
-
-        // 將未發送的List Index 定位到全部搜尋List 的index 使用的Dict
-        Dictionary<int, int> NotSendList_to_AllList = new Dictionary<int, int>();
-
-        // 將未發送的List Index 定位到全部搜尋List 的index 使用的Dict
-        Dictionary<int, int> SendedList_to_AllList = new Dictionary<int, int>();
+        Dictionary<String, String> _DicCourseName = new Dictionary<string, string>();
 
 
         public PerformanceRequestViewer()
         {
             InitializeComponent();
+
+            //自動換行設定
+            dataGridViewX1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
         }
 
-        private void PerformanceRequestViewer_Load(object sender, EventArgs e)        
+        private void PerformanceRequestViewer_Load(object sender, EventArgs e)
         {
             //設定預設時間區間，預設為 從今天到上禮拜一
             dateTimeInput1.Value = DateTime.Now.Date.AddDays(-7 - (int)DateTime.Now.DayOfWeek + 1);
             dateTimeInput2.Value = DateTime.Now.Date;
-            
-            //搜尋區間內的資料
-            list = accessHelper.Select<PerformanceData>("occur_date >=" + "'" + dateTimeInput1.Value + "'" + "AND occur_date <=" + "'" + dateTimeInput2.Value+"'");
-
-            // 整理順序的Code ，以後如果有需要再改
-            //list.Sort(delegate(PerformanceItem PI1, PerformanceItem PI2)
-            //{
-            //    return PI1.Order.CompareTo(PI2.Order);
-            //});
 
             //建立學生、老師、課程 ID 與 Name 的對照
             #region 建立對照
-            var list_studentRec = K12.Data.Student.SelectAll();
-
-            var list_teacherRec = K12.Data.Teacher.SelectAll();
-
-            var list_courseRec = K12.Data.Course.SelectAll();
-
-            foreach (var Rec in list_studentRec)
+            BackgroundWorker bkw = new BackgroundWorker();
+            bkw.DoWork += delegate
             {
-                if (!StudentID_to_StudentName.ContainsKey(Rec.ID))
+                var dicStudentName = new Dictionary<string, string>();
+                var dicTeacherName = new Dictionary<string, string>();
+                var dicCourseName = new Dictionary<string, string>();
+                dicStudentName.Add("", "");
+                dicTeacherName.Add("", "");
+                dicCourseName.Add("", "");
+                var studentList = K12.Data.Student.SelectAll();
+                var teacherList = K12.Data.Teacher.SelectAll();
+                var courseList = K12.Data.Course.SelectAll();
+                foreach (var Rec in studentList)
                 {
-                    StudentID_to_StudentName.Add(Rec.ID, Rec.Name);
+                    if (!dicStudentName.ContainsKey(Rec.ID))
+                    {
+                        dicStudentName.Add(Rec.ID, Rec.Name);
+                    }
                 }
-
-            }
-            foreach (var Rec in list_teacherRec)
+                foreach (var Rec in teacherList)
+                {
+                    if (!dicTeacherName.ContainsKey(Rec.ID))
+                    {
+                        dicTeacherName.Add(Rec.ID, Rec.Name);
+                    }
+                }
+                foreach (var Rec in courseList)
+                {
+                    if (!dicCourseName.ContainsKey(Rec.ID))
+                    {
+                        dicCourseName.Add(Rec.ID, Rec.Name);
+                    }
+                }
+                lock (typeof(PerformanceRequestViewer))
+                {
+                    _DicStudentName = dicStudentName;
+                    _DicTeacherName = dicTeacherName;
+                    _DicCourseName = dicCourseName;
+                }
+            };
+            bkw.RunWorkerCompleted += delegate
             {
-                if (!TeacherID_to_TeacherName.ContainsKey(Rec.ID))
+                foreach (DataGridViewRow row in dataGridViewX1.Rows)
                 {
-                    TeacherID_to_TeacherName.Add(Rec.ID, Rec.Name);
+                    lock (typeof(PerformanceRequestViewer))
+                    {
+                        PerformanceData item = row.Tag as PerformanceData;
+                        if (_DicStudentName.ContainsKey("" + item.RefStudentID))
+                            item.StudentName = _DicStudentName["" + item.RefStudentID];
+                        if (_DicTeacherName.ContainsKey("" + item.RefTeacherID))
+                            item.TeacherName = _DicTeacherName["" + item.RefTeacherID];
+                        if (_DicCourseName.ContainsKey("" + item.RefCourseID))
+                            item.CourseName = _DicCourseName["" + item.RefCourseID];
+                    }
+                    updateRowValue(row);
                 }
-            }
-            foreach (var Rec in list_courseRec)
-            {
-                if (!CourseID_to_CourseName.ContainsKey(Rec.ID))
-                {
-                    CourseID_to_CourseName.Add(Rec.ID, Rec.Name);
-                }
-
-            }
+            };
+            bkw.RunWorkerAsync();
             #endregion
 
             comboBoxEx1.Items.Add("未發送");
@@ -95,143 +112,115 @@ namespace K12.Behavior.CSP
             //先預設選"全選"，順帶一提此時會觸發comboBoxEx1_SelectedIndexChanged()，雖然本案最後不用了
             comboBoxEx1.SelectedIndex = 2;
 
-            //自動換行設定
-            dataGridViewX1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+            fillData();
 
-            Search_Show_Data();                       
+            if (FISCA.Authentication.DSAServices.AccountType != FISCA.Authentication.AccountType.Greening)
+            {
+                MessageBox.Show("必須要使用Greening帳號登入才能執行發送功能。");
+            }
         }
-           
+
         // 搜尋按鈕
         private void buttonX1_Click(object sender, EventArgs e)
         {
-            Search_Show_Data();
+            fillData();
 
+        }
+        // 搜尋並為DataGridView 填值
+        private void fillData()
+        {
+            //搜尋區間內的資料
+            var list = _AccessHelper.Select<PerformanceData>("occur_date >=" + "'" + dateTimeInput1.Value + "'" + "AND occur_date <=" + "'" + dateTimeInput2.Value + "'");
+            list.Reverse();
+
+            // 將舊的資料清光
+            dataGridViewX1.Rows.Clear();
+            foreach (var item in list)
+            {
+                lock (typeof(PerformanceRequestViewer))
+                {
+                    if (_DicStudentName.ContainsKey("" + item.RefStudentID))
+                        item.StudentName = _DicStudentName["" + item.RefStudentID];
+                    if (_DicTeacherName.ContainsKey("" + item.RefTeacherID))
+                        item.TeacherName = _DicTeacherName["" + item.RefTeacherID];
+                    if (_DicCourseName.ContainsKey("" + item.RefCourseID))
+                        item.CourseName = _DicCourseName["" + item.RefCourseID];
+                }
+
+                var row = dataGridViewX1.Rows[dataGridViewX1.Rows.Add(
+                    item.OccurDate.ToString("yyyy/MM/dd"),
+                    item.StudentName,
+                    item.TeacherName,
+                    item.CourseName,
+                    item.PublishMessage.Trim(),
+                    item.Published == false ? "" : "已發送")];
+                row.Tag = item;
+                row.MinimumHeight = 60;
+                if (comboBoxEx1.Text == "未發送" && item.Published)
+                    row.Visible = false;
+                if (comboBoxEx1.Text == "已發送" && !item.Published)
+                    row.Visible = false;
+            }
+        }
+
+        private void comboBoxEx1_TextChanged(object sender, EventArgs e)
+        {
+            foreach (DataGridViewRow row in dataGridViewX1.Rows)
+            {
+                PerformanceData item = row.Tag as PerformanceData;
+
+                if (comboBoxEx1.Text == "未發送" && item.Published)
+                    row.Visible = false;
+                else if (comboBoxEx1.Text == "已發送" && !item.Published)
+                    row.Visible = false;
+                else
+                    row.Visible = true;
+            }
+        }
+
+        private void updateRowValue(DataGridViewRow row)
+        {
+            PerformanceData item = row.Tag as PerformanceData;
+
+            row.SetValues(
+                item.OccurDate.ToString("yyyy/MM/dd"),
+                item.StudentName,
+                item.TeacherName,
+                item.CourseName,
+                item.PublishMessage.Trim(),
+                item.Published == false ? "" : "已發送"
+            );
+
+            if (comboBoxEx1.Text == "未發送" && item.Published)
+                row.Visible = false;
+            else if (comboBoxEx1.Text == "已發送" && !item.Published)
+                row.Visible = false;
+            else
+                row.Visible = true;
         }
 
         // 詳細資料
         private void dataGridViewX1_CellContentDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
-            
-            Int32 selectedRowCount = dataGridViewX1.CurrentCell.RowIndex;
+            if (e.RowIndex < 0 || e.ColumnIndex < 0)//Header點擊也會觸發事件
+                return;
 
-            Dictionary<String, String> ID_to_Name = new Dictionary<string, string>();
-
-
-            #region 全選
-            if (comboBoxEx1.Text == "全選")
-            {
-                ID_to_Name.Add("Student", StudentID_to_StudentName["" + list[selectedRowCount].RefStudentID]);
-
-                ID_to_Name.Add("Teacher", TeacherID_to_TeacherName["" + list[selectedRowCount].RefTeacherID]);
-
-                ID_to_Name.Add("Course", CourseID_to_CourseName["" + list[selectedRowCount].RefCourseID]);
-
-                PerformanceReqestDetail PRD = new PerformanceReqestDetail(list[selectedRowCount], ID_to_Name);
-
-                PRD.ShowDialog();
-            } 
-            #endregion
-
-            #region 未發送
-            if (comboBoxEx1.Text == "未發送")
-            {
-                ID_to_Name.Add("Student", StudentID_to_StudentName["" + list[NotSendList_to_AllList[selectedRowCount]].RefStudentID]);
-
-                ID_to_Name.Add("Teacher", TeacherID_to_TeacherName["" + list[NotSendList_to_AllList[selectedRowCount]].RefTeacherID]);
-
-                ID_to_Name.Add("Course", CourseID_to_CourseName["" + list[NotSendList_to_AllList[selectedRowCount]].RefCourseID]);
-
-                PerformanceReqestDetail PRD = new PerformanceReqestDetail(list[NotSendList_to_AllList[selectedRowCount]], ID_to_Name);
-
-                PRD.ShowDialog();
-            } 
-            #endregion
-
-            #region 已發送
-            if (comboBoxEx1.Text == "已發送")
-            {
-                ID_to_Name.Add("Student", StudentID_to_StudentName["" + list[SendedList_to_AllList[selectedRowCount]].RefStudentID]);
-
-                ID_to_Name.Add("Teacher", TeacherID_to_TeacherName["" + list[SendedList_to_AllList[selectedRowCount]].RefTeacherID]);
-
-                ID_to_Name.Add("Course", CourseID_to_CourseName["" + list[SendedList_to_AllList[selectedRowCount]].RefCourseID]);
-
-                PerformanceReqestDetail PRD = new PerformanceReqestDetail(list[SendedList_to_AllList[selectedRowCount]], ID_to_Name);
-
-                PRD.ShowDialog();
-
-            } 
-            #endregion
-      
+            DataGridViewRow row = dataGridViewX1.Rows[e.RowIndex];
+            PerformanceData item = row.Tag as PerformanceData;
+            new PerformanceReqestDetail(item).ShowDialog();
+            updateRowValue(row);
         }
-  
-        // 搜尋並為DataGridView 填值
-        private void Search_Show_Data() {
-           
-            list = accessHelper.Select<PerformanceData>("occur_date >=" + "'" + dateTimeInput1.Value + "'" + "AND occur_date <=" + "'" + dateTimeInput2.Value + "'");
 
-            // 將舊的資料清光
-            dataGridViewX1.Rows.Clear();
-            NotSendList_to_AllList.Clear();
-            SendedList_to_AllList.Clear();
-
-
-            #region 未發送
-            if (comboBoxEx1.Text == "未發送")
+        private void buttonX2_Click(object sender, EventArgs e)
+        {
+            this.buttonX2.Enabled = false;
+            foreach (DataGridViewRow row in dataGridViewX1.SelectedRows)
             {
-                int i_dict = 0;
-
-                for (int i = 0; i < list.Count; i++)
-                {
-                    if (list[i].Published == false)
-                    {
-                        dataGridViewX1.Rows.Add(list[i].OccurDate.ToString("yyyy/MM/dd"), StudentID_to_StudentName["" + list[i].RefStudentID], TeacherID_to_TeacherName["" + list[i].RefTeacherID], CourseID_to_CourseName["" + list[i].RefCourseID], list[i].PublishMessage, "未發送");
-
-                        // 將未發送的List Index 定位到全部搜尋List 的index
-                        NotSendList_to_AllList.Add(i_dict, i);
-
-                        i_dict++;
-                    }
-                }
-            } 
-            #endregion
-
-            #region 已發送
-            if (comboBoxEx1.Text == "已發送")
-            {
-                int i_dict = 0;
-
-                for (int i = 0; i < list.Count; i++)
-                {
-                    if (list[i].Published == true)
-                    {
-                        dataGridViewX1.Rows.Add(list[i].OccurDate.ToString("yyyy/MM/dd"), StudentID_to_StudentName["" + list[i].RefStudentID], TeacherID_to_TeacherName["" + list[i].RefTeacherID], CourseID_to_CourseName["" + list[i].RefCourseID], list[i].PublishMessage, "已發送");
-
-                        // 將已發送的List Index 定位到全部搜尋List 的index，比如說 已發送的第0項 是在全部List 的第15項
-                        SendedList_to_AllList.Add(i_dict, i);
-
-                        i_dict++;
-                    }
-                }
-
-            } 
-            #endregion
-
-            #region 全選
-            if (comboBoxEx1.Text == "全選")
-            {
-                for (int i = 0; i < list.Count; i++)
-                {
-                    dataGridViewX1.Rows.Add(list[i].OccurDate.ToString("yyyy/MM/dd"), StudentID_to_StudentName["" + list[i].RefStudentID], TeacherID_to_TeacherName["" + list[i].RefTeacherID], CourseID_to_CourseName["" + list[i].RefCourseID], list[i].PublishMessage, list[i].Published == false ? "未發送" : "已發送");
-
-                }
-
-            } 
-            #endregion
-                                
+                PerformanceData item = row.Tag as PerformanceData;
+                item.PublishAndSave();
+                updateRowValue(row);
+            }
+            this.buttonX2.Enabled = true;
         }
-    
     }
-
-
 }

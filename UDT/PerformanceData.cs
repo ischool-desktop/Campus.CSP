@@ -46,6 +46,57 @@ namespace K12.Behavior.CSP.UDT
 
         public PDList Content { get; private set; }
 
+
+        public string TeacherName { get; set; }
+        public string StudentName { get; set; }
+        public string CourseName { get; set; }
+
+        public void PublishAndSave()
+        {
+            //必須要使用greening帳號登入才能用
+            if (FISCA.Authentication.DSAServices.AccountType == FISCA.Authentication.AccountType.Greening)
+            {
+                var subject = K12.Data.Course.SelectByID("" + RefCourseID).Subject;
+
+                System.Xml.XmlDocument doc = new System.Xml.XmlDocument();
+                var root = doc.CreateElement("Request");
+                //發送者名稱
+                {
+                    var ele = doc.CreateElement("DisplaySender");
+                    ele.InnerText = "系統通知";
+                    root.AppendChild(ele);
+                }
+                //標題
+                {
+                    var ele = doc.CreateElement("Title");
+                    ele.InnerText = "課堂表現 " + OccurDate.ToShortDateString();
+                    root.AppendChild(ele);
+                }
+                //內容
+                {
+                    var ele = doc.CreateElement("Message");
+                    ele.AppendChild(doc.CreateCDataSection("課程：" + subject + "\n\n課堂表現內容：\n" + this.PublishMessage.Trim()));
+                    root.AppendChild(ele);
+                }
+                //對象
+                {
+                    var ele = doc.CreateElement("TargetStudent");
+                    ele.InnerText = "" + this.RefStudentID;//學生id
+                    root.AppendChild(ele);
+                }
+
+
+                //送出
+                FISCA.DSAClient.XmlHelper xmlHelper = new FISCA.DSAClient.XmlHelper(root);
+                var conn = new FISCA.DSAClient.Connection();
+                conn.Connect(FISCA.Authentication.DSAServices.AccessPoint, "1campus.notice.admin", FISCA.Authentication.DSAServices.PassportToken);
+                conn.SendRequest("PushNotice", xmlHelper);
+
+
+                this.Published = true;
+                this.Save();
+            }
+        }
     }
     [DataContract]
     class PDList

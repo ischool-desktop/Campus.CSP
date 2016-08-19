@@ -67,7 +67,10 @@
             dataGridViewCellStyle2.SelectionForeColor = System.Drawing.SystemColors.ControlText;
             dataGridViewCellStyle2.WrapMode = System.Windows.Forms.DataGridViewTriState.False;
             this.dgvResult.DefaultCellStyle = dataGridViewCellStyle2;
+            this.dgvResult.EditMode = System.Windows.Forms.DataGridViewEditMode.EditOnEnter;
             this.dgvResult.GridColor = System.Drawing.Color.FromArgb(((int)(((byte)(208)))), ((int)(((byte)(215)))), ((int)(((byte)(229)))));
+            this.dgvResult.HighlightSelectedColumnHeaders = false;
+            this.dgvResult.ImeMode = System.Windows.Forms.ImeMode.Off;
             this.dgvResult.Location = new System.Drawing.Point(12, 12);
             this.dgvResult.Name = "dgvResult";
             dataGridViewCellStyle3.Alignment = System.Windows.Forms.DataGridViewContentAlignment.MiddleLeft;
@@ -83,7 +86,7 @@
             this.dgvResult.RowTemplate.DefaultCellStyle.WrapMode = System.Windows.Forms.DataGridViewTriState.True;
             this.dgvResult.RowTemplate.Height = 24;
             this.dgvResult.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.dgvResult.Size = new System.Drawing.Size(695, 322);
+            this.dgvResult.Size = new System.Drawing.Size(695, 318);
             this.dgvResult.TabIndex = 0;
             this.dgvResult.Tag = "PerformanceItem";
             this.dgvResult.CellContentClick += new System.Windows.Forms.DataGridViewCellEventHandler(this.dgvResult_CellContentClick);
@@ -94,32 +97,34 @@
             this.buttonX1.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this.buttonX1.BackColor = System.Drawing.Color.Transparent;
             this.buttonX1.ColorTable = DevComponents.DotNetBar.eButtonColor.OrangeWithBackground;
-            this.buttonX1.Location = new System.Drawing.Point(607, 340);
+            this.buttonX1.Location = new System.Drawing.Point(607, 336);
             this.buttonX1.Name = "buttonX1";
-            this.buttonX1.Size = new System.Drawing.Size(100, 31);
+            this.buttonX1.Size = new System.Drawing.Size(100, 23);
             this.buttonX1.Style = DevComponents.DotNetBar.eDotNetBarStyle.StyleManagerControlled;
             this.buttonX1.TabIndex = 1;
-            this.buttonX1.Text = "儲存設定";
+            this.buttonX1.Text = "儲存";
             this.buttonX1.Click += new System.EventHandler(this.buttonX1_Click);
             // 
             // labelX1
             // 
+            this.labelX1.AutoSize = true;
             this.labelX1.BackColor = System.Drawing.Color.Transparent;
             // 
             // 
             // 
             this.labelX1.BackgroundStyle.Class = "";
             this.labelX1.BackgroundStyle.CornerType = DevComponents.DotNetBar.eCornerType.Square;
-            this.labelX1.Location = new System.Drawing.Point(12, 340);
+            this.labelX1.Location = new System.Drawing.Point(12, 339);
             this.labelX1.Name = "labelX1";
-            this.labelX1.Size = new System.Drawing.Size(589, 31);
+            this.labelX1.Size = new System.Drawing.Size(508, 20);
             this.labelX1.TabIndex = 2;
-            this.labelX1.Text = "如有要動態輸入可以參照格式:  Failed in-class quiz 小考或成績不及格 Score 分數 ##INPUT##";
+            this.labelX1.Text = "動態輸入欄位設定格式:  <u>Failed in-class quiz 小考或成績不及格 Score 分數: <font color=\"#ED1C24\">##I" +
+    "NPUT##</font></u>";
             // 
             // Column2
             // 
             this.Column2.AutoSizeMode = System.Windows.Forms.DataGridViewAutoSizeColumnMode.Fill;
-            this.Column2.HeaderText = "課堂表現";
+            this.Column2.HeaderText = "課堂表現項目";
             this.Column2.Name = "Column2";
             // 
             // Column3
@@ -150,10 +155,11 @@
             this.Controls.Add(this.dgvResult);
             this.DoubleBuffered = true;
             this.Name = "PerformanceSetting";
-            this.Text = "表現設定";
+            this.Text = "樣板設定";
             this.Load += new System.EventHandler(this.PerformanceSetting_Load);
             ((System.ComponentModel.ISupportInitialize)(this.dgvResult)).EndInit();
             this.ResumeLayout(false);
+            this.PerformLayout();
 
         }
 
@@ -165,7 +171,5 @@
         private System.Windows.Forms.DataGridViewTextBoxColumn Column2;
         private System.Windows.Forms.DataGridViewButtonColumn Column3;
         private System.Windows.Forms.DataGridViewButtonColumn Column4;
-
-
     }
 }
