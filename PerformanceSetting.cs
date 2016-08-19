@@ -16,15 +16,13 @@ namespace K12.Behavior.CSP
 {
     public partial class PerformanceSetting : BaseForm
     {
-        List<PerformanceItem> list = new List<PerformanceItem>();
+        List<PerformanceItem> _List = new List<PerformanceItem>();
 
-        AccessHelper accessHelper = new AccessHelper();
+        AccessHelper _AccessHelper = new AccessHelper();
 
         public PerformanceSetting()
         {
             InitializeComponent();
-
-
         }
 
 
@@ -33,20 +31,20 @@ namespace K12.Behavior.CSP
             //自動換行
             //dgvResult.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
 
-            list = accessHelper.Select<PerformanceItem>();
+            _List = _AccessHelper.Select<PerformanceItem>();
 
             // 以Order整理順序，否則list 的順序將是由id 排
-            list.Sort(delegate (PerformanceItem PI1, PerformanceItem PI2)
+            _List.Sort(delegate (PerformanceItem o1, PerformanceItem o2)
             {
-                return PI1.Order.CompareTo(PI2.Order);
+                return o1.Order.CompareTo(o2.Order);
             });
 
             // 加入項目
-            for (int i = 0; i < list.Count; i++)
+            for (int i = 0; i < _List.Count; i++)
             {
-                DataGridViewRow DGR = dgvResult.Rows[dgvResult.Rows.Add(list[i].Item, "上移", "下移")];
+                DataGridViewRow row = dgvResult.Rows[dgvResult.Rows.Add(_List[i].Item, "上移", "下移")];
 
-                DGR.Tag = list[i];
+                row.Tag = _List[i];
 
             }
 
@@ -65,69 +63,41 @@ namespace K12.Behavior.CSP
         // 儲存設定按鈕
         private void buttonX1_Click(object sender, EventArgs e)
         {
+            dgvResult.EndEdit();
             // 先預設每一項抓下來的PerformanceItem List 的每一項PI Item 都是要刪除，後面在反向把有讀到的合理資料設定為不刪除
             // 如此使用者就可以直接在UI上刪除一整條Row
-            foreach (var item in list)
+            foreach (var item in _List)
             {
                 item.Deleted = true;
             }
 
+            int order = 0;
             // 全部的Row 進行檢定
-            foreach (DataGridViewRow dgvr in dgvResult.Rows)
+            foreach (DataGridViewRow row in dgvResult.Rows)
             {
-                PerformanceItem PI = new PerformanceItem();
-
-                PI = (PerformanceItem)dgvr.Tag;
-
-                //假如他有PI，且課堂表現不為空
-                if (dgvr.Tag != null && "" + dgvr.Cells[2].Value != "")
+                if (("" + row.Cells[0].Value) != "")
                 {
-
-                    //假如順序有改變，針對Order調整，其值= Rowindex
-                    if ("" + dgvr.Index != "" + PI.Order)
+                    PerformanceItem pi;
+                    if (row.Tag != null)
+                        pi = (PerformanceItem)row.Tag;
+                    else
                     {
-                        PI.Order = Int32.Parse("" + dgvr.Index);
+                        pi = new PerformanceItem();
+                        _List.Add(pi);
                     }
-                    //假如課堂表現有改變，針對Item調整，其值= Cells[2].Value
-                    if ("" + dgvr.Cells[2].Value != "" + PI.Item)
-                    {
-                        PI.Item = (String)dgvr.Cells[2].Value;
-                    }
-
-                    //不管值有沒有改變，只要PI 還存在於UI 上，就不會刪除
-                    PI.Deleted = false;
-                }
-
-                // 假如使用者是用BackSpace 將 課堂表現內容刪光，就算他有PI ，但仍然將該項刪除
-                else if (dgvr.Tag != null && ("" + dgvr.Cells[2].Value == "" || dgvr.Cells[2].Value == null))
-                {
-                    PI.Deleted = true;
-
-                }
-                // 在UI ROW上的項目，假如沒有PI 代表是是使用者新增的項目，主動將它家道list
-                else
-                {
-                    PerformanceItem PI_New = new PerformanceItem();
-                    if (dgvr.Cells[2].Value != null)
-                    {
-                        PI_New.Order = Int32.Parse("" + dgvr.Index);
-                        PI_New.Item = (String)dgvr.Cells[2].Value;
-
-                        PI_New.Deleted = false;
-
-                        list.Add(PI_New);
-                    }
+                    pi.Deleted = false;
+                    pi.Item = "" + row.Cells[0].Value;
+                    pi.Order = order++;
                 }
             }
-
             // Update、Insert、Delete 都在這裡處理
-            list.SaveAll();
-
+            _List.SaveAll();
+            this.Close();
         }
 
         private void dgvResult_CellContentClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (dgvResult.Rows[e.RowIndex].IsNewRow)
+            if (dgvResult.Rows[e.RowIndex].IsNewRow || e.RowIndex < 0)
                 return;
             // 上移
             #region 上移
